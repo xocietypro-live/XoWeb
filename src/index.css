@@ -2,29 +2,25 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Outfit", sans-serif;
   --color-accent: #00f2ff;
   --color-bg-dark: #050508;
 }
 
 @layer base {
   body {
-    @apply bg-[var(--color-bg-dark)] text-white font-sans antialiased;
+    @apply bg-[var(--color-bg-dark)] text-white font-['Outfit',sans-serif] antialiased;
   }
 }
 
-.glass {
-  @apply bg-[rgba(255,255,255,0.02)] backdrop-blur-xl border border-[rgba(255,255,255,0.05)];
+/* Match your original card hover effects */
+.card-style {
+  @apply bg-[rgba(255,255,255,0.02)] p-8 rounded-[25px] border border-[rgba(255,255,255,0.05)] transition-all duration-400;
 }
 
-.glass-hover {
-  @apply transition-all duration-400;
-}
-
-.glass-hover:hover {
-  @apply border-[var(--color-accent)] transform -translate-y-1 bg-[rgba(0,242,255,0.05)];
+.card-style:hover {
+  @apply border-[var(--color-accent)] transform -translate-y-2.5 bg-[rgba(0,242,255,0.05)];
 }
 
 .bg-video {
   @apply fixed top-0 left-0 w-full h-full object-cover -z-10 opacity-30;
-  }
+}
