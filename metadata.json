@@ -1,0 +1,5 @@
+{
+  "name": "Secret Society TV API",
+  "description": "A full-stack API and playlist generator for live TV channels with custom user-agent modification.",
+  "requestFramePermissions": []
+}
