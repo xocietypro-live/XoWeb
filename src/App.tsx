@@ -185,6 +185,13 @@ export default function App() {
   useEffect(() => {
     fetchStatus();
     fetchManagementData();
+    
+    // Auto-refresh status every 30 seconds
+    const interval = setInterval(fetchStatus, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
     if (activeTab === "channels") {
       fetchChannels();
     }
@@ -357,13 +364,6 @@ export default function App() {
             <span>Access URLs</span>
           </button>
           <button
-            onClick={() => setActiveTab("channels")}
-            className={`flex items-center gap-2 px-8 py-3 rounded-xl font-medium transition-all duration-300 whitespace-nowrap ${activeTab === "channels" ? "bg-brand-primary text-white shadow-lg shadow-brand-primary/25" : "text-gray-400 hover:text-white hover:bg-white/5"}`}
-          >
-            <Play className="w-5 h-5" />
-            <span>Channels</span>
-          </button>
-          <button
             onClick={() => setActiveTab("manage")}
             className={`flex items-center gap-2 px-8 py-3 rounded-xl font-medium transition-all duration-300 whitespace-nowrap ${activeTab === "manage" ? "bg-brand-primary text-white shadow-lg shadow-brand-primary/25" : "text-gray-400 hover:text-white hover:bg-white/5"}`}
           >
@@ -382,64 +382,67 @@ export default function App() {
               className="space-y-8"
             >
               {/* Status Bar */}
-              {(status || statusError) && (
-                <div className="glass rounded-2xl p-5 flex flex-col gap-4">
-                  <div className="flex flex-wrap items-center justify-between gap-6">
-                    <div className="flex flex-wrap items-center gap-8">
-                      {statusError ? (
-                        <div className="flex items-center gap-3 text-red-400">
-                          <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]" />
-                          <span className="font-medium">Connection Interrupted</span>
-                          <button 
-                            onClick={fetchStatus}
-                            className="px-3 py-1.5 glass-hover rounded-lg text-xs font-semibold uppercase tracking-wider"
-                          >
-                            Reconnect
-                          </button>
+              <div className="glass rounded-2xl p-5 flex flex-col gap-4">
+                <div className="flex flex-wrap items-center justify-between gap-6">
+                  <div className="flex flex-wrap items-center gap-8">
+                    {statusError ? (
+                      <div className="flex items-center gap-3 text-red-400">
+                        <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]" />
+                        <span className="font-medium">Connection Interrupted</span>
+                        <button 
+                          onClick={fetchStatus}
+                          className="px-3 py-1.5 glass-hover rounded-lg text-xs font-semibold uppercase tracking-wider"
+                        >
+                          Reconnect
+                        </button>
+                      </div>
+                    ) : status ? (
+                      <>
+                        <div className="flex items-center gap-3">
+                          <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
+                          <span className="text-gray-400 font-medium uppercase text-xs tracking-widest">Active Channels</span>
+                          <span className="font-mono text-brand-secondary text-lg font-bold">{status.channelCount}</span>
                         </div>
-                      ) : status ? (
-                        <>
-                          <div className="flex items-center gap-3">
-                            <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
-                            <span className="text-gray-400 font-medium uppercase text-xs tracking-widest">Active Channels</span>
-                            <span className="font-mono text-brand-secondary text-lg font-bold">{status.channelCount}</span>
+                        {status.minExpiry && (
+                          <div className="flex items-center gap-3 pl-8 border-l border-white/10">
+                            <Shield className="w-4 h-4 text-brand-primary" />
+                            <span className="text-gray-400 font-medium uppercase text-xs tracking-widest">Token Validity</span>
+                            <span className={`font-mono font-bold ${status.minExpiry - status.serverTime < 3600 ? 'text-red-400' : 'text-brand-primary'}`}>
+                              {new Date(status.minExpiry * 1000).toLocaleString([], { 
+                                year: 'numeric', 
+                                month: '2-digit', 
+                                day: '2-digit', 
+                                hour: '2-digit', 
+                                minute: '2-digit', 
+                                second: '2-digit' 
+                              })}
+                            </span>
                           </div>
-                          {status.minExpiry && (
-                            <div className="flex items-center gap-3 pl-8 border-l border-white/10">
-                              <Shield className="w-4 h-4 text-brand-primary" />
-                              <span className="text-gray-400 font-medium uppercase text-xs tracking-widest">Token Validity</span>
-                              <span className={`font-mono font-bold ${status.minExpiry - status.serverTime < 3600 ? 'text-red-400' : 'text-brand-primary'}`}>
-                                {new Date(status.minExpiry * 1000).toLocaleString([], { 
-                                  year: 'numeric', 
-                                  month: '2-digit', 
-                                  day: '2-digit', 
-                                  hour: '2-digit', 
-                                  minute: '2-digit', 
-                                  second: '2-digit' 
-                                })}
-                              </span>
-                            </div>
-                          )}
-                        </>
-                      ) : null}
-                    </div>
-                    {status && (
-                      <div className="text-gray-500 text-xs font-medium uppercase tracking-widest">
-                        Synced {new Date(status.lastFetch).toLocaleTimeString()}
+                        )}
+                      </>
+                    ) : (
+                      <div className="flex items-center gap-3 text-gray-500">
+                        <div className="w-2.5 h-2.5 rounded-full bg-gray-600 animate-pulse" />
+                        <span className="font-medium uppercase text-xs tracking-widest">Initializing System...</span>
                       </div>
                     )}
                   </div>
-                  
-                  {window.location.hostname.includes('vercel.app') && (
-                    <div className="flex items-center gap-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400 text-xs">
-                      <Info className="w-4 h-4 shrink-0" />
-                      <p>
-                        <span className="font-bold">Vercel Notice:</span> Custom channels and linked sources will reset periodically. Use Firebase for permanent storage.
-                      </p>
+                  {status && (
+                    <div className="text-gray-500 text-xs font-medium uppercase tracking-widest">
+                      Synced {status.lastFetch > 0 ? new Date(status.lastFetch).toLocaleTimeString() : "Pending..."}
                     </div>
                   )}
                 </div>
-              )}
+                
+                {window.location.hostname.includes('vercel.app') && (
+                  <div className="flex items-center gap-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400 text-xs">
+                    <Info className="w-4 h-4 shrink-0" />
+                    <p>
+                      <span className="font-bold">Vercel Notice:</span> Custom channels and linked sources will reset periodically. Use Firebase for permanent storage.
+                    </p>
+                  </div>
+                )}
+              </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {endpoints.map((endpoint) => (
@@ -498,82 +501,6 @@ export default function App() {
                     </div>
                   </div>
                 ))}
-              </div>
-            </motion.div>
-          ) : activeTab === "channels" ? (
-            <motion.div
-              key="channels"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="space-y-8"
-            >
-              <div className="flex flex-col md:flex-row gap-6 items-center justify-between">
-                <div className="relative w-full md:max-w-md">
-                  <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-                  <input 
-                    type="text"
-                    placeholder="Search channels..."
-                    className="w-full bg-black/40 border border-white/10 rounded-2xl pl-14 pr-6 py-4 focus:outline-none focus:border-brand-primary transition-all"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-                <div className="flex items-center gap-4 w-full md:w-auto overflow-x-auto no-scrollbar pb-2 md:pb-0">
-                  <Filter className="w-5 h-5 text-gray-500 shrink-0" />
-                  {categories.map(cat => (
-                    <button
-                      key={cat}
-                      onClick={() => setSelectedCategory(cat)}
-                      className={`px-5 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${selectedCategory === cat ? 'bg-brand-primary text-white' : 'glass text-gray-400 hover:text-white'}`}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-                {filteredChannels.length > 0 ? (
-                  filteredChannels.map(channel => (
-                    <motion.div
-                      layout
-                      key={channel.id}
-                      whileHover={{ y: -5 }}
-                      className="group glass rounded-3xl p-4 glass-hover cursor-pointer relative overflow-hidden"
-                      onClick={() => setActivePlayer(channel)}
-                    >
-                      <div className="aspect-square rounded-2xl bg-black/50 mb-4 p-4 flex items-center justify-center border border-white/5 overflow-hidden group-hover:border-brand-primary/30 transition-all">
-                        {channel.logo ? (
-                          <img 
-                            src={channel.logo} 
-                            alt={channel.name} 
-                            className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500" 
-                            referrerPolicy="no-referrer"
-                          />
-                        ) : (
-                          <Tv className="w-10 h-10 text-gray-700" />
-                        )}
-                      </div>
-                      <h3 className="font-bold text-sm text-center truncate px-1">{channel.name}</h3>
-                      <p className="text-[10px] text-center text-brand-primary/70 uppercase tracking-widest mt-1 font-bold">{channel.category || "General"}</p>
-                      
-                      <div className="absolute inset-0 bg-brand-primary/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <div className="p-3 bg-brand-primary rounded-full shadow-xl shadow-brand-primary/40 scale-0 group-hover:scale-100 transition-transform duration-300">
-                          <Play className="w-6 h-6 text-white fill-current" />
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))
-                ) : (
-                  <div className="col-span-full py-32 text-center">
-                    <div className="inline-flex p-6 bg-white/5 rounded-full mb-6">
-                      <Search className="w-12 h-12 text-gray-600" />
-                    </div>
-                    <h3 className="text-2xl font-bold text-gray-400">No channels found</h3>
-                    <p className="text-gray-500 mt-2">Try adjusting your search or category filter</p>
-                  </div>
-                )}
               </div>
             </motion.div>
           ) : (

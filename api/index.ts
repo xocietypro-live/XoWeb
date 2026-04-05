@@ -22,8 +22,8 @@ app.use((req, res, next) => {
 let cachedData: any[] = [];
 let lastFetch = 0;
 let minExpiry: number | null = null;
-const CACHE_TTL = 60 * 1000; // 1 minute
-const FETCH_TIMEOUT = 8000; // 8 seconds
+const CACHE_TTL = 30 * 1000; // 30 seconds for "automation" feel
+const FETCH_TIMEOUT = 10000; // 10 seconds
 
 async function fetchWithTimeout(url: string, options = {}) {
   const controller = new AbortController();
@@ -109,10 +109,14 @@ async function parseExternalJSON(url: string) {
     } else {
       data = JSON.parse(text);
     }
-    return data.filter(item => item.id).map(item => ({
-      ...item,
-      userAgent: item.userAgent || "𝐒𝐄𝐂𝐑𝐄𝐓 𝐒𝐎𝐂𝐈𝐄𝐓𝐘"
-    }));
+    return data.filter(item => item.id).map(item => {
+      let ua = item.userAgent || "𝐒𝐄𝐂𝐑𝐄𝐓 𝐒𝐎𝐂𝐈𝐄𝐓𝐘";
+      if (ua === "serevtvhub") ua = "𝐒𝐄𝐂𝐑𝐄𝐓 𝐒𝐎𝐂𝐈𝐄𝐓𝐘";
+      return {
+        ...item,
+        userAgent: ua
+      };
+    });
   } catch (error) {
     console.error(`Error parsing JSON from ${url}:`, error);
     return [];
@@ -121,6 +125,7 @@ async function parseExternalJSON(url: string) {
 
 async function getChannels() {
   const now = Date.now();
+  // If cache is valid, return it
   if (cachedData.length > 0 && now - lastFetch < CACHE_TTL) {
     return cachedData;
   }
@@ -129,32 +134,48 @@ async function getChannels() {
   let allChannels: any[] = [];
   let currentMinExpiry: number | null = null;
 
+  // 1. Fetch from worker API (Automation)
   try {
+    console.log("Fetching fresh data from worker...");
     const workerChannels = await parseExternalJSON("https://xocietylive-api.soul0busters.workers.dev/");
-    workerChannels.forEach(item => {
-      if (item.token) {
-        const exp = extractExpiry(item.token);
-        if (exp && (currentMinExpiry === null || exp < currentMinExpiry)) {
-          currentMinExpiry = exp;
+    
+    if (workerChannels && workerChannels.length > 0) {
+      workerChannels.forEach(item => {
+        if (item.token) {
+          const exp = extractExpiry(item.token);
+          if (exp && (currentMinExpiry === null || exp < currentMinExpiry)) {
+            currentMinExpiry = exp;
+          }
         }
-      }
-    });
-    allChannels = [...workerChannels];
+      });
+      allChannels = [...workerChannels];
+    }
   } catch (error) {
     console.error("Error fetching worker channels:", error);
+    // If fetch fails but we have cache, keep using it for now
+    if (cachedData.length > 0) return cachedData;
   }
 
+  // 2. Fetch from external playlists
   for (const playlist of stored.externalPlaylists) {
-    const url = typeof playlist === 'string' ? playlist : playlist.url;
-    const type = typeof playlist === 'string' ? (url.includes(".json") ? "json" : "m3u") : playlist.type;
-    const externalChannels = type === "json" ? await parseExternalJSON(url) : await parseExternalM3U(url);
-    allChannels = [...allChannels, ...externalChannels];
+    try {
+      const url = typeof playlist === 'string' ? playlist : playlist.url;
+      const type = typeof playlist === 'string' ? (url.includes(".json") ? "json" : "m3u") : playlist.type;
+      const externalChannels = type === "json" ? await parseExternalJSON(url) : await parseExternalM3U(url);
+      allChannels = [...allChannels, ...externalChannels];
+    } catch (e) {
+      console.error(`Error fetching playlist:`, e);
+    }
   }
 
+  // 3. Add custom manual channels
   allChannels = [...allChannels, ...stored.customChannels];
+
+  // Update cache
   cachedData = allChannels;
   lastFetch = now;
   minExpiry = currentMinExpiry;
+  console.log(`Cache updated with ${allChannels.length} channels at ${new Date(lastFetch).toLocaleTimeString()}`);
   return allChannels;
 }
 
@@ -165,9 +186,11 @@ app.get("/api/health", (req, res) => {
 
 app.get("/api/status", async (req, res) => {
   try {
+    // If cache is empty or stale, we MUST wait for the fetch on Vercel
     if (cachedData.length === 0 || Date.now() - lastFetch > CACHE_TTL) {
-      getChannels().catch(e => console.error("Background fetch error:", e));
+      await getChannels();
     }
+    
     res.json({
       lastFetch,
       minExpiry,
@@ -176,6 +199,7 @@ app.get("/api/status", async (req, res) => {
       isStale: Date.now() - lastFetch > CACHE_TTL
     });
   } catch (error) {
+    console.error("Status endpoint error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -251,8 +275,11 @@ app.get("/api/playlist", async (req, res) => {
   let m3u = "#EXTM3U x-tvg-url=\"\"\n";
   channels.forEach((item: any) => {
     if (item.id) {
+      let ua = item.userAgent || "𝐒𝐄𝐂𝐑𝐄𝐓 𝐒𝐎𝐂𝐈𝐄𝐓𝐘";
+      if (ua === "serevtvhub") ua = "𝐒𝐄𝐂𝐑𝐄𝐓 𝐒𝐎𝐂𝐈𝐄𝐓𝐘";
+      
       m3u += `#EXTINF:-1 tvg-id=\"${item.id}\" tvg-name=\"${item.name}\" tvg-logo=\"${item.logo}\" group-title=\"${item.category}\",${item.name}\n`;
-      m3u += `#EXTVLCOPT:http-user-agent=${item.userAgent || "𝐒𝐄𝐂𝐑𝐄𝐓 𝐒𝐎𝐂𝐈𝐄𝐓𝐘"}\n`;
+      m3u += `#EXTVLCOPT:http-user-agent=${ua}\n`;
       if (item.referer) m3u += `#EXTVLCOPT:http-referrer=${item.referer}\n`;
       if (item.drm && typeof item.drm === 'object') {
         m3u += `#KODIPROP:inputstream.adaptive.license_type=clearkey\n`;
@@ -266,7 +293,7 @@ app.get("/api/playlist", async (req, res) => {
       if (!baseUrl) return;
       const token = item.token ? (baseUrl.includes("?") ? "&" : "?") + item.token : "";
       const finalUrl = baseUrl + token;
-      let headerSuffix = `|User-Agent=${encodeURIComponent(item.userAgent || "𝐒𝐄𝐂𝐑𝐄𝐓 𝐒𝐎𝐂𝐈𝐄𝐓𝐘")}`;
+      let headerSuffix = `|User-Agent=${encodeURIComponent(ua)}`;
       if (item.referer) headerSuffix += `&Referer=${encodeURIComponent(item.referer)}`;
       if (item.cookies) headerSuffix += `&Cookie=${encodeURIComponent(item.cookies)}`;
       m3u += `${finalUrl}${headerSuffix}\n`;
