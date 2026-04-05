@@ -383,48 +383,59 @@ export default function App() {
             >
               {/* Status Bar */}
               {(status || statusError) && (
-                <div className="glass rounded-2xl p-5 flex flex-wrap items-center justify-between gap-6">
-                  <div className="flex flex-wrap items-center gap-8">
-                    {statusError ? (
-                      <div className="flex items-center gap-3 text-red-400">
-                        <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]" />
-                        <span className="font-medium">Connection Interrupted</span>
-                        <button 
-                          onClick={fetchStatus}
-                          className="px-3 py-1.5 glass-hover rounded-lg text-xs font-semibold uppercase tracking-wider"
-                        >
-                          Reconnect
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex items-center gap-3">
-                          <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
-                          <span className="text-gray-400 font-medium uppercase text-xs tracking-widest">Active Channels</span>
-                          <span className="font-mono text-brand-secondary text-lg font-bold">{status.channelCount}</span>
+                <div className="glass rounded-2xl p-5 flex flex-col gap-4">
+                  <div className="flex flex-wrap items-center justify-between gap-6">
+                    <div className="flex flex-wrap items-center gap-8">
+                      {statusError ? (
+                        <div className="flex items-center gap-3 text-red-400">
+                          <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]" />
+                          <span className="font-medium">Connection Interrupted</span>
+                          <button 
+                            onClick={fetchStatus}
+                            className="px-3 py-1.5 glass-hover rounded-lg text-xs font-semibold uppercase tracking-wider"
+                          >
+                            Reconnect
+                          </button>
                         </div>
-                        {status.minExpiry && (
-                          <div className="flex items-center gap-3 pl-8 border-l border-white/10">
-                            <Shield className="w-4 h-4 text-brand-primary" />
-                            <span className="text-gray-400 font-medium uppercase text-xs tracking-widest">Token Validity</span>
-                            <span className={`font-mono font-bold ${status.minExpiry - status.serverTime < 3600 ? 'text-red-400' : 'text-brand-primary'}`}>
-                              {new Date(status.minExpiry * 1000).toLocaleString([], { 
-                                year: 'numeric', 
-                                month: '2-digit', 
-                                day: '2-digit', 
-                                hour: '2-digit', 
-                                minute: '2-digit', 
-                                second: '2-digit' 
-                              })}
-                            </span>
+                      ) : status ? (
+                        <>
+                          <div className="flex items-center gap-3">
+                            <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
+                            <span className="text-gray-400 font-medium uppercase text-xs tracking-widest">Active Channels</span>
+                            <span className="font-mono text-brand-secondary text-lg font-bold">{status.channelCount}</span>
                           </div>
-                        )}
-                      </>
+                          {status.minExpiry && (
+                            <div className="flex items-center gap-3 pl-8 border-l border-white/10">
+                              <Shield className="w-4 h-4 text-brand-primary" />
+                              <span className="text-gray-400 font-medium uppercase text-xs tracking-widest">Token Validity</span>
+                              <span className={`font-mono font-bold ${status.minExpiry - status.serverTime < 3600 ? 'text-red-400' : 'text-brand-primary'}`}>
+                                {new Date(status.minExpiry * 1000).toLocaleString([], { 
+                                  year: 'numeric', 
+                                  month: '2-digit', 
+                                  day: '2-digit', 
+                                  hour: '2-digit', 
+                                  minute: '2-digit', 
+                                  second: '2-digit' 
+                                })}
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      ) : null}
+                    </div>
+                    {status && (
+                      <div className="text-gray-500 text-xs font-medium uppercase tracking-widest">
+                        Synced {new Date(status.lastFetch).toLocaleTimeString()}
+                      </div>
                     )}
                   </div>
-                  {status && (
-                    <div className="text-gray-500 text-xs font-medium uppercase tracking-widest">
-                      Synced {new Date(status.lastFetch).toLocaleTimeString()}
+                  
+                  {window.location.hostname.includes('vercel.app') && (
+                    <div className="flex items-center gap-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400 text-xs">
+                      <Info className="w-4 h-4 shrink-0" />
+                      <p>
+                        <span className="font-bold">Vercel Notice:</span> Custom channels and linked sources will reset periodically. Use Firebase for permanent storage.
+                      </p>
                     </div>
                   )}
                 </div>
