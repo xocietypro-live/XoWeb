@@ -145,7 +145,7 @@ const FETCH_TIMEOUT = 10000; // 10 seconds
     // 1. Fetch from worker API (Automation)
     try {
       console.log("Fetching fresh data from worker...");
-      const workerChannels = await parseExternalJSON("https://xocietylive-api.soul0busters.workers.dev/");
+      const workerChannels = await parseExternalJSON("https://xojioprime.wasmer.app/playlist.php");
       
       if (workerChannels && workerChannels.length > 0) {
         workerChannels.forEach(item => {
